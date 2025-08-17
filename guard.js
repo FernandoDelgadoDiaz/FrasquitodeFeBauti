@@ -1,65 +1,89 @@
-// guard.js — PERSONALIZACIÓN SIN TOKENS (v4-lite)
+// guard.js — PERSONALIZACIÓN SIN TOKENS + intro completa + oculta "Versión Bauti"
 (function () {
+  const TAGLINE = "Léeme cuando te sientas ansioso, triste, desanimado o agradecido ✨";
+
   const qs = new URLSearchParams(location.search);
-  // 1) Tomar nombre de la URL o del dispositivo
   let nombre = (qs.get("u") || localStorage.getItem("buyer_name") || "").trim();
 
-  // --- Utilidades ---
+  // Utilidad para setear ?u= en la URL
   const setParam = (url, key, value) => {
     try { const u = new URL(url); u.searchParams.set(key, value); return u.toString(); }
     catch { return url; }
   };
 
-  function setNombre(n) {
-    // Guardar para próximos ingresos
-    localStorage.setItem("buyer_name", n);
-
-    // a) Reemplazo directo en selectores comunes
-    let placed = false;
-    ["[data-username]", "#username", "#usuario", "#usuarioSpan", ".usuario"].forEach(sel => {
-      const el = document.querySelector(sel);
-      if (el) { el.textContent = n; placed = true; }
-    });
-
-    // b) Si no hay selectores, buscar un "Hola ..." y reemplazarlo
-    if (!placed) {
-      for (const el of document.querySelectorAll("h1,h2,h3,p,div,span")) {
-        const t = (el.textContent || "").trim();
-        if (/^hola\s+.+/i.test(t) && !/versi[oó]n\s/i.test(t)) { el.textContent = `Hola ${n}!`; placed = true; break; }
+  // Quitar "Versión Bauti" (y variantes de espacio/caso)
+  function ocultarVersionBauti() {
+    const nodes = document.querySelectorAll("small,.subtitle,h2,p,div,span");
+    for (const el of nodes) {
+      const t = (el.textContent || "").trim();
+      if (/\bversi[oó]n\b/i.test(t) && /bauti/i.test(t)) {
+        el.remove(); // esconder totalmente
+        break;
       }
-    }
-
-    // c) Si todavía no hay dónde, mostrar cinta discreta (tap para editar)
-    if (!placed && !document.getElementById("guard-ribbon-lite")) {
-      const ribbon = document.createElement("div");
-      ribbon.id = "guard-ribbon-lite";
-      ribbon.innerHTML = `<style>
-        #guard-ribbon-lite{position:fixed;top:10px;right:10px;background:#121737;color:#eaf1ff;
-          border:1px solid #2d315b;border-radius:999px;padding:8px 12px;font-size:.9rem;z-index:2147483646}
-        #guard-ribbon-lite small{opacity:.7;margin-left:6px}
-      </style><span>Para: <b>${n}</b></span><small>(tocar para editar)</small>`;
-      ribbon.addEventListener("click", () => {
-        const nuevo = prompt("¿Cómo te llamás?", n) || n;
-        const v = nuevo.trim() || n;
-        localStorage.setItem("buyer_name", v);
-        // Actualizar URL para persistir si comparte el enlace
-        try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v))); } catch {}
-        // Refrescar texto en la UI
-        setNombre(v);
-      });
-      document.documentElement.appendChild(ribbon);
     }
   }
 
-  // --- Flujo principal ---
+  function setIntroCompleta(n) {
+    // Guardar para próximos ingresos
+    localStorage.setItem("buyer_name", n);
+
+    // 1) Si hay contenedor con "Hola ..." lo reemplazo por intro completa
+    let colocado = false;
+    for (const el of document.querySelectorAll("h1,h2,h3,p,div,span")) {
+      const txt = (el.textContent || "").trim();
+      if (/^hola\s+/i.test(txt)) {
+        el.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
+        colocado = true;
+        break;
+      }
+    }
+
+    // 2) Si tenés un span dedicado al nombre, lo actualizo y busco la línea de intro para poner TAGLINE
+    ["[data-username]", "#username", "#usuario", "#usuarioSpan", ".usuario"].forEach(sel => {
+      const el = document.querySelector(sel);
+      if (el) { el.textContent = n; colocado = true; }
+    });
+
+    if (!colocado) {
+      // 3) Si no encontré nada, muestro cinta (y al tocar se puede editar)
+      if (!document.getElementById("guard-ribbon-lite")) {
+        const ribbon = document.createElement("div");
+        ribbon.id = "guard-ribbon-lite";
+        ribbon.innerHTML = `<style>
+          #guard-ribbon-lite{position:fixed;top:10px;right:10px;background:#121737;color:#eaf1ff;
+            border:1px solid #2d315b;border-radius:999px;padding:8px 12px;font-size:.9rem;z-index:2147483646}
+          #guard-ribbon-lite small{opacity:.7;margin-left:6px}
+        </style><span>Para: <b>${n}</b></span><small>(tocar para editar)</small>`;
+        ribbon.addEventListener("click", () => {
+          const nuevo = prompt("¿Cómo te llamás?", n) || n;
+          const v = (nuevo || "").trim() || n;
+          localStorage.setItem("buyer_name", v);
+          try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v))); } catch {}
+          setIntroCompleta(v);
+        });
+        document.documentElement.appendChild(ribbon);
+      }
+    }
+
+    // 4) Intento poner el TAGLINE también en un bloque de intro si existe (por si el nombre está en otro nodo)
+    const posiblesIntro = [...document.querySelectorAll(".intro,[data-intro]")];
+    for (const el of posiblesIntro) {
+      if (!/Léeme cuando te sientas/i.test(el.textContent || "")) {
+        el.appendChild(document.createTextNode(" " + TAGLINE));
+      }
+    }
+  }
+
+  // ---- Flujo principal
+  ocultarVersionBauti();
+
   if (nombre) {
-    // Vino en URL o ya estaba guardado → usar y actualizar URL
-    setNombre(nombre);
+    setIntroCompleta(nombre);
     try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(nombre))); } catch {}
     return;
   }
 
-  // No hay nombre → pedirlo una vez con un overlay mínimo
+  // Si no vino nombre, pedirlo una única vez
   const ov = document.createElement("div");
   ov.id = "name-overlay-lite";
   ov.innerHTML = `
@@ -86,10 +110,10 @@
     const btn = ov.querySelector("#btnOkLite");
     const go = () => {
       const v = (inp.value || "Usuario").trim();
-      setNombre(v);
-      // Actualizar URL con ?u= para futuros ingresos/compartidos
       try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v))); } catch {}
       ov.remove();
+      ocultarVersionBauti();
+      setIntroCompleta(v);
     };
     btn.addEventListener("click", go);
     inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
