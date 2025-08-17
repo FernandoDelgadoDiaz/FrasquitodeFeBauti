@@ -1,3 +1,13 @@
+# netlify.toml — limpio
 [build]
-  publish = "."
+  publish   = "."
   functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Evitar cache del guard para siempre validar online
+[[headers]]
+  for = "/guard.js"
+  [headers.values]
+    Cache-Control = "no-store, must-revalidate"
