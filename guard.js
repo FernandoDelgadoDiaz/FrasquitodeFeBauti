@@ -1,118 +1,142 @@
-// guard.js — sin tokens + intro completa + sin cinta (editar con long-press)
+// guard.js — sin tokens + intro completa + selector de tema (Bauti/Martina)
 (function () {
   const TAGLINE = "Léeme cuando te sientas ansioso, triste, desanimado o agradecido ✨";
-  const qs = new URLSearchParams(location.search);
-  let nombre = (qs.get("u") || localStorage.getItem("buyer_name") || "").trim();
 
-  const setParam = (url, key, value) => {
-    try { const u = new URL(url); u.searchParams.set(key, value); return u.toString(); }
-    catch { return url; }
+  // Paletas base (podés ajustar colores exactos cuando quieras)
+  const THEMES = {
+    bauti:   { bg1:"#f1fff5", bg2:"#f2fbff", brand:"#ffb3ab", chip:"#ffe9e5", text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55" },
+    martina: { bg1:"#fff1f7", bg2:"#f4f1ff", brand:"#d7a8ff", chip:"#f5e9ff", text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55" }
   };
 
-  function pedirNombre(def = "") {
+  const qs = new URLSearchParams(location.search);
+  let nombre = (qs.get("u") || localStorage.getItem("buyer_name") || "").trim();
+  let themeKey = (qs.get("t") || localStorage.getItem("ff_theme_key") || "bauti").toLowerCase();
+  if (!THEMES[themeKey]) themeKey = "bauti";
+
+  const setParam = (url, key, value) => { try { const u = new URL(url); u.searchParams.set(key, value); return u.toString(); } catch { return url; } };
+
+  // Inyecta/actualiza CSS del tema
+  function applyTheme(key) {
+    const p = THEMES[key] || THEMES.bauti;
+    localStorage.setItem("ff_theme_key", key);
+    const css = `
+      :root{
+        --bg1:${p.bg1}; --bg2:${p.bg2}; --brand:${p.brand}; --chip:${p.chip};
+        --text:${p.text}; --card:${p.card}; --border:${p.border};
+      }
+      body{ background: linear-gradient(180deg,var(--bg1),var(--bg2)) !important; color: var(--text); }
+      .card, .intro-block{ background: var(--card) !important; border:1px solid var(--border) !important; border-radius:18px; }
+      .chip, .pill{ background: var(--chip) !important; border:1px solid var(--brand) !important; }
+      button, .btn{ background: var(--chip) !important; border:1px solid var(--brand) !important; }
+      a, .link{ color: var(--brand) !important; }
+    `;
+    let tag = document.getElementById("dynamic-theme");
+    if (!tag) { tag = document.createElement("style"); tag.id = "dynamic-theme"; document.documentElement.appendChild(tag); }
+    tag.textContent = css;
+    themeKey = key;
+  }
+
+  // Quita cualquier "Versión ..."
+  function quitarLineaVersion() {
+    for (const el of document.querySelectorAll("small,em,i,p,div,span")) {
+      const t = (el.textContent || "").trim();
+      if (/^versi[oó]n\b/i.test(t)) el.remove();
+    }
+  }
+
+  // Pinta “Hola N! + TAGLINE”. Devuelve el nodo del saludo
+  function pintarIntro(n) {
+    localStorage.setItem("buyer_name", n);
+    for (const el of document.querySelectorAll("h1,h2,h3,p,div,span,strong")) {
+      const t = (el.textContent || "").trim();
+      if (/^hola\s+/i.test(t)) { el.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`; return el; }
+    }
+    const host = document.querySelector("main") || document.body;
+    const bar = document.createElement("div");
+    bar.className = "intro-block";
+    bar.style.cssText = "margin:16px auto 8px;max-width:720px;padding:14px 16px;text-align:center";
+    bar.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
+    host.insertBefore(bar, host.children[2] || host.firstChild);
+    return bar;
+  }
+
+  // Overlay para editar nombre + tema
+  function abrirEditor(defName, defTheme) {
     return new Promise(res => {
       const ov = document.createElement("div");
-      ov.id = "name-overlay-lite";
+      ov.id = "cfg-overlay";
       ov.innerHTML = `
         <style>
-          #name-overlay-lite{position:fixed;inset:0;background:rgba(10,11,20,.96);color:#eaf1ff;
-            display:flex;align-items:center;justify-content:center;z-index:2147483647;
-            font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-          #name-overlay-lite .card{background:linear-gradient(180deg,#151735,#10122e);border:1px solid #2d315b;
-            border-radius:16px;padding:18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-width:92vw;text-align:center}
-          #name-overlay-lite input{padding:10px;border-radius:8px;border:1px solid #2d315b;background:#0e1330;color:#eaf1ff;width:230px}
-          #name-overlay-lite button{margin-left:6px;padding:10px 14px;border-radius:8px;background:#5ad1e6;color:#0a0f18;border:0;font-weight:700;cursor:pointer}
-          #name-overlay-lite .muted{opacity:.8;font-size:.9rem;margin-top:6px}
+          #cfg-overlay{position:fixed;inset:0;background:rgba(10,11,20,.96);color:#eaf1ff;display:flex;align-items:center;justify-content:center;z-index:2147483647;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+          #cfg-overlay .card{background:linear-gradient(180deg,#151735,#10122e);border:1px solid #2d315b;border-radius:16px;padding:18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-width:92vw;text-align:center}
+          #cfg-overlay input, #cfg-overlay select{padding:10px;border-radius:8px;border:1px solid #2d315b;background:#0e1330;color:#eaf1ff;width:240px}
+          #cfg-overlay button{margin-left:6px;padding:10px 14px;border-radius:8px;background:#5ad1e6;color:#0a0f18;border:0;font-weight:700;cursor:pointer}
+          #cfg-overlay .row{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:8px;flex-wrap:wrap}
+          #cfg-overlay .sw{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#0e1330;border:1px solid #2d315b}
+          #cfg-overlay .box{width:18px;height:18px;border-radius:4px}
+          @media (max-width:380px){ #cfg-overlay input, #cfg-overlay select{width:200px} }
         </style>
         <div class="card">
           <div style="font-weight:800;margin-bottom:8px">Personalizá tu copia</div>
-          <div><input id="inpNombreLite" placeholder="Tu nombre" autocomplete="name" value="${def}">
-          <button id="btnOkLite">Continuar</button></div>
-          <div class="muted">Se guardará en tu dispositivo. Podrás cambiarlo manteniendo presionado el saludo.</div>
+          <div class="row">
+            <input id="inpNombre" placeholder="Tu nombre" value="${defName || ""}" autocomplete="name">
+          </div>
+          <div class="row">
+            <div class="sw"><div class="box" style="background:${THEMES.bauti.brand}"></div><label><input type="radio" name="t" value="bauti" ${defTheme==="bauti"?"checked":""}> Bauti (verde)</label></div>
+            <div class="sw"><div class="box" style="background:${THEMES.martina.brand}"></div><label><input type="radio" name="t" value="martina" ${defTheme==="martina"?"checked":""}> Martina (lila)</label></div>
+          </div>
+          <div class="row"><button id="btnOk">Guardar</button></div>
+          <div style="opacity:.8;font-size:.9rem;margin-top:6px">Se guarda en tu dispositivo y en el enlace.</div>
         </div>`;
       document.documentElement.appendChild(ov);
-      const inp = ov.querySelector("#inpNombreLite");
-      const btn = ov.querySelector("#btnOkLite");
-      const go  = () => { const v = (inp.value || "Usuario").trim(); ov.remove(); res(v); };
+      const inp = ov.querySelector("#inpNombre");
+      const btn = ov.querySelector("#btnOk");
+      const getTheme = () => ov.querySelector('input[name="t"]:checked')?.value || "bauti";
+      const go = () => { const n = (inp.value || "Usuario").trim(); const t = getTheme(); ov.remove(); res({ n, t }); };
       btn.addEventListener("click", go);
       inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
       setTimeout(()=>inp.focus(),0);
     });
   }
 
-  // Quitar cualquier "Versión ...", ej. "Versión Bauti"
-  function quitarLineaVersion() {
-    for (const el of document.querySelectorAll("small,em,i,p,div,span")) {
-      const t = (el.textContent || "").trim();
-      if (/^versi[oó]n\b/i.test(t)) { el.remove(); }
-    }
-  }
-
-  // Pinta “Hola N! + TAGLINE”. Devuelve el nodo donde lo escribió.
-  function pintarIntro(n) {
-    localStorage.setItem("buyer_name", n);
-
-    // 1) Reemplazar si ya existe un “Hola …”
-    for (const el of document.querySelectorAll("h1,h2,h3,p,div,span,strong")) {
-      const t = (el.textContent || "").trim();
-      if (/^hola\s+/i.test(t)) { el.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`; return el; }
-    }
-    // 2) Si hay contenedor dedicado al nombre, solo actualizo y busco bloque de intro
-    ["[data-username]", "#username", "#usuario", "#usuarioSpan", ".usuario"].forEach(sel => {
-      const el = document.querySelector(sel);
-      if (el) el.textContent = n;
-    });
-    // 3) Si no había, creo un bloque limpio arriba de los botones
-    const host = document.querySelector("main") || document.body;
-    const bar = document.createElement("div");
-    bar.style.cssText = "margin:16px auto 8px;max-width:720px;background:#ffffff14;border:1px solid #e6e7ee55;border-radius:18px;padding:14px 16px;text-align:center";
-    bar.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
-    host.insertBefore(bar, host.children[2] || host.firstChild);
-    return bar;
-  }
-
-  // Gesto invisible para editar: long-press sobre el saludo (y fallback en la imagen del frasco)
-  function habilitarLongPressEditar(el, fallbackEl) {
-    const bind = (target) => {
-      if (!target) return;
-      if (target.__lpBound) return; // evitar doble binding
-      target.__lpBound = true;
-      let timer = null;
-      const start = () => { timer = setTimeout(async () => {
-          const actual = localStorage.getItem("buyer_name") || "";
-          const nuevo  = await pedirNombre(actual);
-          const v = (nuevo || actual || "Usuario").trim();
-          history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v)));
-          quitarLineaVersion();
-          const nodo = pintarIntro(v);
-          // re-bind por si el nodo cambió
-          habilitarLongPressEditar(nodo);
-        }, 650);
-      };
-      const end = () => { clearTimeout(timer); timer = null; };
-      ["pointerdown","touchstart","mousedown"].forEach(ev=>target.addEventListener(ev,start));
-      ["pointerup","pointercancel","touchend","mouseleave","mouseup"].forEach(ev=>target.addEventListener(ev,end));
+  // Gesto invisible para volver a abrir el editor (long-press en saludo o frasco)
+  function bindLongPress(targets) {
+    const bind = (el) => {
+      if (!el || el.__lpBound) return;
+      el.__lpBound = true;
+      let timer=null;
+      const start=()=>{ timer=setTimeout(async ()=>{
+        const curName = localStorage.getItem("buyer_name") || "";
+        const curTheme = localStorage.getItem("ff_theme_key") || themeKey;
+        const { n, t } = await abrirEditor(curName, curTheme);
+        applyTheme(t);
+        quitarLineaVersion();
+        const intro = pintarIntro(n);
+        history.replaceState(null, "", setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",t));
+        bindLongPress([intro, document.querySelector("img")]);
+      },650); };
+      const end=()=>{ clearTimeout(timer); timer=null; };
+      ["pointerdown","touchstart","mousedown"].forEach(e=>el.addEventListener(e,start));
+      ["pointerup","pointercancel","touchend","mouseleave","mouseup"].forEach(e=>el.addEventListener(e,end));
     };
-    bind(el);
-    if (fallbackEl) bind(fallbackEl);
+    targets.forEach(bind);
   }
 
-  function run(n) {
+  function run(n, tKey) {
+    applyTheme(tKey);
     quitarLineaVersion();
-    const nodoIntro = pintarIntro(n);
-    // fallback: primer imagen del frasco si existe
-    const jarImg = document.querySelector("img");
-    habilitarLongPressEditar(nodoIntro, jarImg);
-    try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(n))); } catch {}
+    const intro = pintarIntro(n);
+    try { history.replaceState(null, "", setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",tKey)); } catch {}
+    bindLongPress([intro, document.querySelector("img")]); // saludo o frasco
   }
 
   const start = async () => {
-    const n = nombre || await pedirNombre("");
-    run(n);
+    if (!nombre) {
+      const { n, t } = await abrirEditor("", themeKey);
+      nombre = n; themeKey = t;
+    }
+    run(nombre, themeKey);
   };
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
 })();
