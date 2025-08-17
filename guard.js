@@ -1,121 +1,112 @@
-// guard.js — PERSONALIZACIÓN SIN TOKENS + intro completa + oculta "Versión Bauti"
+// guard.js — sin tokens + intro completa + quita "Versión ..."
 (function () {
   const TAGLINE = "Léeme cuando te sientas ansioso, triste, desanimado o agradecido ✨";
-
   const qs = new URLSearchParams(location.search);
   let nombre = (qs.get("u") || localStorage.getItem("buyer_name") || "").trim();
 
-  // Utilidad para setear ?u= en la URL
+  // util: setea ?u= en la URL
   const setParam = (url, key, value) => {
     try { const u = new URL(url); u.searchParams.set(key, value); return u.toString(); }
     catch { return url; }
   };
 
-  // Quitar "Versión Bauti" (y variantes de espacio/caso)
-  function ocultarVersionBauti() {
-    const nodes = document.querySelectorAll("small,.subtitle,h2,p,div,span");
-    for (const el of nodes) {
-      const t = (el.textContent || "").trim();
-      if (/\bversi[oó]n\b/i.test(t) && /bauti/i.test(t)) {
-        el.remove(); // esconder totalmente
-        break;
-      }
-    }
-  }
-
-  function setIntroCompleta(n) {
-    // Guardar para próximos ingresos
-    localStorage.setItem("buyer_name", n);
-
-    // 1) Si hay contenedor con "Hola ..." lo reemplazo por intro completa
-    let colocado = false;
-    for (const el of document.querySelectorAll("h1,h2,h3,p,div,span")) {
-      const txt = (el.textContent || "").trim();
-      if (/^hola\s+/i.test(txt)) {
-        el.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
-        colocado = true;
-        break;
-      }
-    }
-
-    // 2) Si tenés un span dedicado al nombre, lo actualizo y busco la línea de intro para poner TAGLINE
-    ["[data-username]", "#username", "#usuario", "#usuarioSpan", ".usuario"].forEach(sel => {
-      const el = document.querySelector(sel);
-      if (el) { el.textContent = n; colocado = true; }
+  // pide nombre con overlay (no prompt del navegador)
+  function pedirNombre(def = "") {
+    return new Promise(res => {
+      const ov = document.createElement("div");
+      ov.id = "name-overlay-lite";
+      ov.innerHTML = `
+        <style>
+          #name-overlay-lite{position:fixed;inset:0;background:rgba(10,11,20,.96);color:#eaf1ff;
+            display:flex;align-items:center;justify-content:center;z-index:2147483647;
+            font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
+          #name-overlay-lite .card{background:linear-gradient(180deg,#151735,#10122e);border:1px solid #2d315b;
+            border-radius:16px;padding:18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-width:92vw;text-align:center}
+          #name-overlay-lite input{padding:10px;border-radius:8px;border:1px solid #2d315b;background:#0e1330;color:#eaf1ff;width:230px}
+          #name-overlay-lite button{margin-left:6px;padding:10px 14px;border-radius:8px;background:#5ad1e6;color:#0a0f18;border:0;font-weight:700;cursor:pointer}
+          #name-overlay-lite .muted{opacity:.8;font-size:.9rem;margin-top:6px}
+        </style>
+        <div class="card">
+          <div style="font-weight:800;margin-bottom:8px">Personalizá tu copia</div>
+          <div><input id="inpNombreLite" placeholder="Tu nombre" autocomplete="name" value="${def}">
+          <button id="btnOkLite">Continuar</button></div>
+          <div class="muted">Se guardará en tu dispositivo. Podrás cambiarlo luego.</div>
+        </div>`;
+      document.documentElement.appendChild(ov);
+      const inp = ov.querySelector("#inpNombreLite");
+      const btn = ov.querySelector("#btnOkLite");
+      const go = () => { const v = (inp.value || "Usuario").trim(); ov.remove(); res(v); };
+      btn.addEventListener("click", go);
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+      setTimeout(()=>inp.focus(),0);
     });
+  }
 
-    if (!colocado) {
-      // 3) Si no encontré nada, muestro cinta (y al tocar se puede editar)
-      if (!document.getElementById("guard-ribbon-lite")) {
-        const ribbon = document.createElement("div");
-        ribbon.id = "guard-ribbon-lite";
-        ribbon.innerHTML = `<style>
-          #guard-ribbon-lite{position:fixed;top:10px;right:10px;background:#121737;color:#eaf1ff;
-            border:1px solid #2d315b;border-radius:999px;padding:8px 12px;font-size:.9rem;z-index:2147483646}
-          #guard-ribbon-lite small{opacity:.7;margin-left:6px}
-        </style><span>Para: <b>${n}</b></span><small>(tocar para editar)</small>`;
-        ribbon.addEventListener("click", () => {
-          const nuevo = prompt("¿Cómo te llamás?", n) || n;
-          const v = (nuevo || "").trim() || n;
-          localStorage.setItem("buyer_name", v);
-          try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v))); } catch {}
-          setIntroCompleta(v);
-        });
-        document.documentElement.appendChild(ribbon);
-      }
-    }
-
-    // 4) Intento poner el TAGLINE también en un bloque de intro si existe (por si el nombre está en otro nodo)
-    const posiblesIntro = [...document.querySelectorAll(".intro,[data-intro]")];
-    for (const el of posiblesIntro) {
-      if (!/Léeme cuando te sientas/i.test(el.textContent || "")) {
-        el.appendChild(document.createTextNode(" " + TAGLINE));
-      }
+  // quita cualquier línea "Versión ..." bajo el título
+  function quitarLineaVersion() {
+    for (const el of document.querySelectorAll("small,em,i,p,div,span")) {
+      const t = (el.textContent || "").trim();
+      if (/^versi[oó]n\b/i.test(t)) { el.remove(); }
     }
   }
 
-  // ---- Flujo principal
-  ocultarVersionBauti();
-
-  if (nombre) {
-    setIntroCompleta(nombre);
-    try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(nombre))); } catch {}
-    return;
+  // pone "Hola NOMBRE! + TAGLINE" donde corresponda; si no hay lugar, crea un bloque
+  function pintarIntro(n) {
+    localStorage.setItem("buyer_name", n);
+    // a) si existe un "Hola ..." lo reemplazo
+    let target = null;
+    for (const el of document.querySelectorAll("h1,h2,h3,p,div,span,strong")) {
+      const t = (el.textContent || "").trim();
+      if (/^hola\s+/i.test(t)) { target = el; break; }
+    }
+    if (target) {
+      target.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
+    } else {
+      // b) si no hay, agrego un bloque arriba de los botones
+      const host = document.querySelector("main") || document.body;
+      const bar = document.createElement("div");
+      bar.style.cssText = "margin:16px auto 8px;max-width:720px;background:#ffffff14;border:1px solid #e6e7ee55;border-radius:18px;padding:14px 16px;text-align:center";
+      bar.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
+      host.insertBefore(bar, host.children[2] || host.firstChild);
+    }
   }
 
-  // Si no vino nombre, pedirlo una única vez
-  const ov = document.createElement("div");
-  ov.id = "name-overlay-lite";
-  ov.innerHTML = `
-    <style>
-      #name-overlay-lite{position:fixed;inset:0;background:rgba(10,11,20,.96);color:#eaf1ff;
-        display:flex;align-items:center;justify-content:center;z-index:2147483647;
-        font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
-      #name-overlay-lite .card{background:linear-gradient(180deg,#151735,#10122e);border:1px solid #2d315b;
-        border-radius:16px;padding:18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-width:92vw;text-align:center}
-      #name-overlay-lite input{padding:10px;border-radius:8px;border:1px solid #2d315b;background:#0e1330;color:#eaf1ff;width:220px}
-      #name-overlay-lite button{margin-left:6px;padding:10px 14px;border-radius:8px;background:#5ad1e6;color:#0a0f18;border:0;font-weight:700;cursor:pointer}
-      #name-overlay-lite .muted{opacity:.8;font-size:.9rem;margin-top:6px}
-    </style>
-    <div class="card">
-      <div style="font-weight:800;margin-bottom:8px">Personalizá tu copia</div>
-      <div><input id="inpNombreLite" placeholder="Tu nombre" autocomplete="name" autofocus>
-      <button id="btnOkLite">Continuar</button></div>
-      <div class="muted">Se guardará en tu dispositivo. Podrás cambiarlo tocando “Para: …”.</div>
-    </div>`;
-  document.documentElement.appendChild(ov);
+  // permite editar nombre desde una cinta
+  function ponerCintaEditar(n) {
+    if (document.getElementById("guard-ribbon-lite")) return;
+    const ribbon = document.createElement("div");
+    ribbon.id = "guard-ribbon-lite";
+    ribbon.innerHTML = `<style>
+      #guard-ribbon-lite{position:fixed;top:10px;right:10px;background:#121737;color:#eaf1ff;
+        border:1px solid #2d315b;border-radius:999px;padding:8px 12px;font-size:.9rem;z-index:2147483646}
+      #guard-ribbon-lite small{opacity:.7;margin-left:6px}
+    </style><span>Para: <b>${n}</b></span><small>(tocar para editar)</small>`;
+    ribbon.addEventListener("click", async () => {
+      const nuevo = await pedirNombre(n);
+      const v = (nuevo || n).trim();
+      history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v)));
+      quitarLineaVersion();
+      pintarIntro(v);
+      ribbon.querySelector("b").textContent = v;
+    });
+    document.documentElement.appendChild(ribbon);
+  }
 
-  setTimeout(() => {
-    const inp = ov.querySelector("#inpNombreLite");
-    const btn = ov.querySelector("#btnOkLite");
-    const go = () => {
-      const v = (inp.value || "Usuario").trim();
-      try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v))); } catch {}
-      ov.remove();
-      ocultarVersionBauti();
-      setIntroCompleta(v);
-    };
-    btn.addEventListener("click", go);
-    inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
-  }, 0);
+  function run(n) {
+    quitarLineaVersion();
+    pintarIntro(n);
+    ponerCintaEditar(n);
+    try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(n))); } catch {}
+  }
+
+  // Esperar al DOM por si el script carga muy pronto
+  const start = async () => {
+    const n = nombre || await pedirNombre("");
+    run(n);
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
 })();
