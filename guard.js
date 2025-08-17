@@ -1,16 +1,14 @@
-// guard.js — sin tokens + intro completa + quita "Versión ..."
+// guard.js — sin tokens + intro completa + sin cinta (editar con long-press)
 (function () {
   const TAGLINE = "Léeme cuando te sientas ansioso, triste, desanimado o agradecido ✨";
   const qs = new URLSearchParams(location.search);
   let nombre = (qs.get("u") || localStorage.getItem("buyer_name") || "").trim();
 
-  // util: setea ?u= en la URL
   const setParam = (url, key, value) => {
     try { const u = new URL(url); u.searchParams.set(key, value); return u.toString(); }
     catch { return url; }
   };
 
-  // pide nombre con overlay (no prompt del navegador)
   function pedirNombre(def = "") {
     return new Promise(res => {
       const ov = document.createElement("div");
@@ -30,19 +28,19 @@
           <div style="font-weight:800;margin-bottom:8px">Personalizá tu copia</div>
           <div><input id="inpNombreLite" placeholder="Tu nombre" autocomplete="name" value="${def}">
           <button id="btnOkLite">Continuar</button></div>
-          <div class="muted">Se guardará en tu dispositivo. Podrás cambiarlo luego.</div>
+          <div class="muted">Se guardará en tu dispositivo. Podrás cambiarlo manteniendo presionado el saludo.</div>
         </div>`;
       document.documentElement.appendChild(ov);
       const inp = ov.querySelector("#inpNombreLite");
       const btn = ov.querySelector("#btnOkLite");
-      const go = () => { const v = (inp.value || "Usuario").trim(); ov.remove(); res(v); };
+      const go  = () => { const v = (inp.value || "Usuario").trim(); ov.remove(); res(v); };
       btn.addEventListener("click", go);
       inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
       setTimeout(()=>inp.focus(),0);
     });
   }
 
-  // quita cualquier línea "Versión ..." bajo el título
+  // Quitar cualquier "Versión ...", ej. "Versión Bauti"
   function quitarLineaVersion() {
     for (const el of document.querySelectorAll("small,em,i,p,div,span")) {
       const t = (el.textContent || "").trim();
@@ -50,56 +48,64 @@
     }
   }
 
-  // pone "Hola NOMBRE! + TAGLINE" donde corresponda; si no hay lugar, crea un bloque
+  // Pinta “Hola N! + TAGLINE”. Devuelve el nodo donde lo escribió.
   function pintarIntro(n) {
     localStorage.setItem("buyer_name", n);
-    // a) si existe un "Hola ..." lo reemplazo
-    let target = null;
+
+    // 1) Reemplazar si ya existe un “Hola …”
     for (const el of document.querySelectorAll("h1,h2,h3,p,div,span,strong")) {
       const t = (el.textContent || "").trim();
-      if (/^hola\s+/i.test(t)) { target = el; break; }
+      if (/^hola\s+/i.test(t)) { el.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`; return el; }
     }
-    if (target) {
-      target.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
-    } else {
-      // b) si no hay, agrego un bloque arriba de los botones
-      const host = document.querySelector("main") || document.body;
-      const bar = document.createElement("div");
-      bar.style.cssText = "margin:16px auto 8px;max-width:720px;background:#ffffff14;border:1px solid #e6e7ee55;border-radius:18px;padding:14px 16px;text-align:center";
-      bar.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
-      host.insertBefore(bar, host.children[2] || host.firstChild);
-    }
+    // 2) Si hay contenedor dedicado al nombre, solo actualizo y busco bloque de intro
+    ["[data-username]", "#username", "#usuario", "#usuarioSpan", ".usuario"].forEach(sel => {
+      const el = document.querySelector(sel);
+      if (el) el.textContent = n;
+    });
+    // 3) Si no había, creo un bloque limpio arriba de los botones
+    const host = document.querySelector("main") || document.body;
+    const bar = document.createElement("div");
+    bar.style.cssText = "margin:16px auto 8px;max-width:720px;background:#ffffff14;border:1px solid #e6e7ee55;border-radius:18px;padding:14px 16px;text-align:center";
+    bar.innerHTML = `<b>Hola ${n}!</b> ${TAGLINE}`;
+    host.insertBefore(bar, host.children[2] || host.firstChild);
+    return bar;
   }
 
-  // permite editar nombre desde una cinta
-  function ponerCintaEditar(n) {
-    if (document.getElementById("guard-ribbon-lite")) return;
-    const ribbon = document.createElement("div");
-    ribbon.id = "guard-ribbon-lite";
-    ribbon.innerHTML = `<style>
-      #guard-ribbon-lite{position:fixed;top:10px;right:10px;background:#121737;color:#eaf1ff;
-        border:1px solid #2d315b;border-radius:999px;padding:8px 12px;font-size:.9rem;z-index:2147483646}
-      #guard-ribbon-lite small{opacity:.7;margin-left:6px}
-    </style><span>Para: <b>${n}</b></span><small>(tocar para editar)</small>`;
-    ribbon.addEventListener("click", async () => {
-      const nuevo = await pedirNombre(n);
-      const v = (nuevo || n).trim();
-      history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v)));
-      quitarLineaVersion();
-      pintarIntro(v);
-      ribbon.querySelector("b").textContent = v;
-    });
-    document.documentElement.appendChild(ribbon);
+  // Gesto invisible para editar: long-press sobre el saludo (y fallback en la imagen del frasco)
+  function habilitarLongPressEditar(el, fallbackEl) {
+    const bind = (target) => {
+      if (!target) return;
+      if (target.__lpBound) return; // evitar doble binding
+      target.__lpBound = true;
+      let timer = null;
+      const start = () => { timer = setTimeout(async () => {
+          const actual = localStorage.getItem("buyer_name") || "";
+          const nuevo  = await pedirNombre(actual);
+          const v = (nuevo || actual || "Usuario").trim();
+          history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(v)));
+          quitarLineaVersion();
+          const nodo = pintarIntro(v);
+          // re-bind por si el nodo cambió
+          habilitarLongPressEditar(nodo);
+        }, 650);
+      };
+      const end = () => { clearTimeout(timer); timer = null; };
+      ["pointerdown","touchstart","mousedown"].forEach(ev=>target.addEventListener(ev,start));
+      ["pointerup","pointercancel","touchend","mouseleave","mouseup"].forEach(ev=>target.addEventListener(ev,end));
+    };
+    bind(el);
+    if (fallbackEl) bind(fallbackEl);
   }
 
   function run(n) {
     quitarLineaVersion();
-    pintarIntro(n);
-    ponerCintaEditar(n);
+    const nodoIntro = pintarIntro(n);
+    // fallback: primer imagen del frasco si existe
+    const jarImg = document.querySelector("img");
+    habilitarLongPressEditar(nodoIntro, jarImg);
     try { history.replaceState(null, "", setParam(location.href, "u", encodeURIComponent(n))); } catch {}
   }
 
-  // Esperar al DOM por si el script carga muy pronto
   const start = async () => {
     const n = nombre || await pedirNombre("");
     run(n);
