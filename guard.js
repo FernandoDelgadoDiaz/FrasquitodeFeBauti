@@ -1,33 +1,30 @@
-// guard.js v8 — nombre + tema (Bauti/Martina) con long-press, sin cinta, sin "Versión …"
+// guard.js v8.1 — nombre + tema (Bauti/Martina), long-press, sin cinta ni “Versión …”
 (function () {
-  // Paletas exactas (ajustadas a tus capturas)
   const THEMES = {
-    bauti: {
-      bg1:"#f3fff5", bg2:"#f3fbff",     // verde muy suave
-      brand:"#ffb8ae", chip:"#ffe9e5",  // coral botones
-      text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55"
-    },
-    martina: {
-      bg1:"#ffece0", bg2:"#fdeff8",     // durazno/rosado suave
-      brand:"#f6c7ff", chip:"#f7eaff",  // lila botones
-      text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55"
-    }
+    bauti:   { bg1:"#f3fff5", bg2:"#f3fbff", brand:"#ffb8ae", chip:"#ffe9e5", text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55" },
+    martina: { bg1:"#ffece0", bg2:"#fdeff8", brand:"#f6c7ff", chip:"#f7eaff", text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55" }
   };
-
-  // Taglines por género (según tema)
   const TAGLINE = {
     bauti:   "Léeme cuando te sientas ansioso, triste, desanimado o agradecido ✨",
     martina: "Léeme cuando te sientas ansiosa, triste, desanimada o agradecida ✨",
   };
 
+  // --- Params (decodifica acentos/espacios) ---
   const qs = new URLSearchParams(location.search);
-  let nombre   = (qs.get("u") || localStorage.getItem("buyer_name") || "").trim();
+  const getDecoded = (k) => decodeURIComponent((qs.get(k) || "").replace(/\+/g," ")).trim();
+  let nombre   = getDecoded("u") || (localStorage.getItem("buyer_name") || "").trim();
   let themeKey = (qs.get("t") || localStorage.getItem("ff_theme_key") || "bauti").toLowerCase();
   if (!THEMES[themeKey]) themeKey = "bauti";
 
-  const setParam = (url, key, value) => { try { const u = new URL(url); u.searchParams.set(key, value); return u.toString(); } catch { return url; } };
+  const setParam = (url, key, value) => { try { const u=new URL(url); u.searchParams.set(key,value); return u.toString(); } catch { return url; } };
 
-  /** Aplica CSS del tema */
+  // --- Safety: limpia overlays viejos y muestra la app ---
+  function unblock() {
+    const old = document.getElementById("guard-blocker"); if (old) old.remove();
+    const main = document.querySelector("main"); if (main) main.style.removeProperty("display");
+    document.body.style.removeProperty("display");
+  }
+
   function applyTheme(key) {
     const p = THEMES[key] || THEMES.bauti;
     localStorage.setItem("ff_theme_key", key);
@@ -43,15 +40,13 @@
     `;
   }
 
-  /** Borra cualquier “Versión …” (Bauti/Martina/lo que sea) */
   function quitarLineaVersion() {
     for (const el of document.querySelectorAll("small,em,i,p,div,span")) {
       const t = (el.textContent || "").trim();
-      if (/versi[oó]n\s+/i.test(t)) el.remove();  // sin anclar al inicio
+      if (/versi[oó]n\s+/i.test(t)) el.remove();
     }
   }
 
-  /** Pinta “Hola N! + tagline” y devuelve el nodo del saludo */
   function pintarIntro(n, key) {
     const tagline = TAGLINE[key] || TAGLINE.bauti;
     localStorage.setItem("buyer_name", n);
@@ -61,11 +56,11 @@
       const txt = (el.textContent || "").trim();
       if (/^hola\s+/i.test(txt)) { el.innerHTML = `<b>Hola ${n}!</b> ${tagline}`; return el; }
     }
-    // También actualiza posibles spans de nombre sueltos
-    ["[data-username]", "#username", "#usuario", "#usuarioSpan", ".usuario"].forEach(sel => {
-      const el = document.querySelector(sel); if (el) el.textContent = n;
-    });
-    // Si no hay, crea bloque limpio arriba de los botones
+    // Spans de nombre sueltos
+    ["[data-username]","#username","#usuario","#usuarioSpan",".usuario",".hola-nombre"]
+      .forEach(sel => { const el=document.querySelector(sel); if(el) el.textContent=n; });
+
+    // Si no hay, se crea bloque
     const host = document.querySelector("main") || document.body;
     const bar = document.createElement("div");
     bar.className = "intro-block";
@@ -75,7 +70,6 @@
     return bar;
   }
 
-  /** Editor (overlay) para nombre + tema */
   function abrirEditor(defName, defTheme) {
     return new Promise(res => {
       const ov = document.createElement("div");
@@ -94,9 +88,7 @@
         </style>
         <div class="card">
           <div style="font-weight:800;margin-bottom:8px">Personalizá tu copia</div>
-          <div class="row">
-            <input id="inpNombre" placeholder="Tu nombre" value="${defName || ""}" autocomplete="name">
-          </div>
+          <div class="row"><input id="inpNombre" placeholder="Tu nombre" value="${defName || ""}" autocomplete="name"></div>
           <div class="row">
             <div class="sw"><div class="box" style="background:${THEMES.bauti.brand}"></div>
               <label><input type="radio" name="t" value="bauti" ${defTheme==="bauti"?"checked":""}> Bauti (verde)</label></div>
@@ -110,19 +102,13 @@
       const inp = ov.querySelector("#inpNombre");
       const btn = ov.querySelector("#btnOk");
       const getTheme = () => ov.querySelector('input[name="t"]:checked')?.value || "bauti";
-      const go = () => {
-        const n = (inp.value || "Usuario").trim();
-        const t = getTheme();
-        ov.remove();
-        res({ n, t });
-      };
+      const go = () => { const n=(inp.value||"Usuario").trim(); const t=getTheme(); ov.remove(); res({n,t}); };
       btn.addEventListener("click", go);
       inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
       setTimeout(()=>inp.focus(),0);
     });
   }
 
-  /** Long-press para abrir editor (en saludo o frasco) */
   function bindLongPress(targets) {
     const bind = (el) => {
       if (!el || el.__lpBound) return;
@@ -133,10 +119,9 @@
         const curTheme = localStorage.getItem("ff_theme_key") || themeKey;
         const { n, t } = await abrirEditor(curName, curTheme);
         nombre = n; themeKey = t;
-        applyTheme(t);
-        quitarLineaVersion();
+        applyTheme(t); quitarLineaVersion();
         const intro = pintarIntro(n, t);
-        try { history.replaceState(null, "", setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",t)); } catch {}
+        try { history.replaceState(null,"", setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",t)); } catch {}
         bindLongPress([intro, document.querySelector("img")]); // rebind
       },650); };
       const end = ()=>{ clearTimeout(timer); timer=null; };
@@ -147,14 +132,16 @@
   }
 
   function run(n, tKey) {
+    unblock();                          // <<— clave
     applyTheme(tKey);
     quitarLineaVersion();
     const intro = pintarIntro(n, tKey);
-    try { history.replaceState(null, "", setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",tKey)); } catch {}
+    try { history.replaceState(null,"", setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",tKey)); } catch {}
     bindLongPress([intro, document.querySelector("img")]);
   }
 
   const start = async () => {
+    unblock();                          // <<— por si el DOM llega con overlay
     if (!nombre) {
       const { n, t } = await abrirEditor("", themeKey);
       nombre = n; themeKey = t;
