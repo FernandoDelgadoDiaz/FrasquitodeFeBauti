@@ -1,7 +1,3 @@
 [build]
   publish = "."
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Robots-Tag = "noindex, nofollow"
+  functions = "netlify/functions"
