@@ -1,0 +1,239 @@
+
+<!doctype html><html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#ecfff3">
+<title>Frasquito de Fe — Bauti</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" sizes="192x192" href="icons/icon-192.png">
+<style>
+
+:root{--bg:#ecfff3;--card:#f8fffb;--text:#2b3140;--muted:#6b7280;--shadow:0 10px 30px rgba(0,0,0,.08);}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial;color:var(--text);background:radial-gradient(circle at 20% 10%,#fff4ee,var(--bg)),radial-gradient(circle at 80% 0%,#eefaff,var(--bg));display:flex;align-items:center;justify-content:center;padding:18px}
+.app{width:100%;max-width:460px}
+header{text-align:center;margin-bottom:8px}
+.brand{font-weight:800;letter-spacing:.5px;font-size:26px}
+.sub{color:var(--muted);font-size:14px}
+.jar-wrap{position:relative;display:flex;justify-content:center;margin:6px 0 0}
+.jar{width:180px;height:210px;animation:float 4s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,.1))}
+@keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+.hello{text-align:center;background:var(--card);border-radius:18px;padding:10px 14px;box-shadow:var(--shadow)}
+.emotions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 4px}
+.emo{background:#fff;border:2px solid #ffe1d7;border-radius:14px;padding:8px;text-align:center;font-size:12px;box-shadow:var(--shadow);cursor:pointer;user-select:none}
+.emo.active{border-color:#ffb3a7;transform:translateY(-1px)}
+.card{background:var(--card);border-radius:18px;padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.ref{color:var(--muted);font-size:12px}
+.extract{font-size:16px;line-height:1.35}
+.reflection{font-size:14px;color:#3b3f4a}
+.actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.btn{flex:1;background:#fff;border:2px solid #ffe1d7;border-radius:14px;padding:10px 12px;text-align:center;cursor:pointer;font-weight:600}
+.btn.primary{background:linear-gradient(180deg,#ffdeda,#ffc7b9);border-color:#ffb3a7}
+.btn:active{transform:scale(.98)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.25);display:none;align-items:center;justify-content:center;padding:18px}
+.modal{width:100%;max-width:480px;background:#fff;border-radius:18px;padding:12px;box-shadow:var(--shadow);max-height:80vh;overflow:auto}
+.fav-item{border:1px dashed #ffd5c9;border-radius:12px;padding:10px;margin:10px 0}
+.fav-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.x{background:#ffe7e1;border:none;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+.tag{background:#fff0f4;color:#b95c86;font-size:11px;padding:2px 8px;border-radius:10px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:#333;color:#fff;padding:8px 12px;border-radius:12px;font-size:13px;display:none}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:8px}
+#shareImg{width:100%;border-radius:12px;box-shadow:var(--shadow)}
+
+</style>
+</head><body>
+  <div class="app">
+    <header>
+      <div class="brand">Frasquito de Fe</div>
+      <div class="sub">Versión Bauti</div>
+    </header>
+
+    <div class="jar-wrap">
+      <svg class="jar" viewBox="0 0 200 220" aria-hidden="true">
+        <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#fef6f3"/></linearGradient></defs>
+        <rect x="35" y="30" rx="18" ry="18" width="130" height="160" fill="url(#g)" stroke="#b7c0d0" stroke-width="4"/>
+        <rect x="45" y="10" rx="8" ry="8" width="110" height="24" fill="#f2f4fb" stroke="#b7c0d0" stroke-width="4"/>
+        <circle cx="80" cy="95" r="8" fill="#2b3140"/><circle cx="120" cy="95" r="8" fill="#2b3140"/>
+        <path d="M85 115 Q100 125 115 115" stroke="#2b3140" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <circle cx="65" cy="110" r="5" fill="#ffb0bf" opacity=".8"/><circle cx="135" cy="110" r="5" fill="#ffb0bf" opacity=".8"/>
+      </svg>
+    </div>
+
+    <div class="hello"><b>Hola Bauti!</b> Léeme cuando te sientas ansioso, triste, desanimado o agradecido 💫</div>
+
+    <div class="emotions">
+      <div class="emo" data-emo="tristeza">Triste</div>
+      <div class="emo" data-emo="ansiedad">Ansioso</div>
+      <div class="emo" data-emo="desanimo">Desanimado</div>
+      <div class="emo" data-emo="gratitud">Agradecido</div>
+    </div>
+
+    <div class="card" id="card">
+      <div class="ref" id="ref">Elegí una emoción ⭐</div>
+      <div class="extract" id="extract"></div>
+      <div class="reflection" id="reflection"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="btnOtro">Dame otro</button>
+      <button class="btn" id="btnFav">Guardar en Favoritos</button>
+      <button class="btn" id="btnVerFav">Ver favoritos</button>
+      <button class="btn" id="btnShare">Compartir</button>
+    </div>
+
+    <div class="foot">Funciona 100% offline · Instalá como app desde tu navegador</div>
+  </div>
+
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="margin:8px 0">⭐ Tus favoritos</h3>
+        <button class="x" id="btnClose">Cerrar</button>
+      </div>
+      <div id="favList"></div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="x" id="btnClearAll">Borrar todos</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="shareBg">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h3 style="margin:8px 0">🖼️ Tarjeta lista para compartir</h3>
+        <button class="x" id="btnShareClose">Cerrar</button>
+      </div>
+      <img id="shareImg" alt="Tarjeta Frasquito de Fe">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <a class="x" id="btnDownload" download="frasquito.png">Descargar</a>
+        <button class="x" id="btnOpenTab">Abrir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Guardado</div>
+
+<script>
+const DATA = {"tristeza": [{"ref": "Salmo 34:18", "extracto": "El Señor está cerca de los que tienen el corazón quebrantado.", "reflexion": "No estás solo; Dios se acerca a tu dolor y lo convierte en consuelo poco a poco."}, {"ref": "Salmo 147:3", "extracto": "Él sana a los quebrantados y venda sus heridas.", "reflexion": "Tus heridas no definen tu historia; en manos de Dios sanan con propósito."}, {"ref": "Juan 14:27", "extracto": "Mi paz les dejo; no se turbe su corazón.", "reflexion": "La paz de Jesús no depende de las circunstancias; te habita ahora mismo."}, {"ref": "Apocalipsis 21:4", "extracto": "Enjugará toda lágrima; no habrá más dolor.", "reflexion": "Tu llanto tiene fecha de vencimiento; el amor de Dios permanece."}, {"ref": "Salmo 23:4", "extracto": "Aunque ande en valle de sombra, no temeré.", "reflexion": "La oscuridad no es el final; Dios camina contigo paso a paso."}, {"ref": "Mateo 5:4", "extracto": "Bienaventurados los que lloran, porque recibirán consuelo.", "reflexion": "Tu sensibilidad es valor; Dios mismo te abraza cuando lloras."}, {"ref": "Isaías 41:10", "extracto": "No temas, porque yo estoy contigo.", "reflexion": "Respirá: no estás solo ; Dios sostiene tu mano hoy."}, {"ref": "Salmo 30:5", "extracto": "El llanto dura una noche; la alegría llega al amanecer.", "reflexion": "Tu mañana está en camino; espera con esperanza viva."}, {"ref": "Salmo 42:11", "extracto": "Espera en Dios, porque aún he de alabarle.", "reflexion": "Tu alma puede volver a cantar; la esperanza es tu sonido."}, {"ref": "Filipenses 4:7", "extracto": "La paz de Dios guarda corazones y pensamientos.", "reflexion": "Dejá que su paz te envuelva como un abrigo fiel."}, {"ref": "Romanos 8:38-39", "extracto": "Nada nos separará del amor de Dios.", "reflexion": "Ni esto ni aquello te apartan; su amor es tu lugar seguro."}, {"ref": "2 Corintios 1:3-4", "extracto": "Dios nos consuela para consolar.", "reflexion": "Lo que hoy sanás será mañana alivio para otras personas."}, {"ref": "Jeremías 29:11", "extracto": "Planes de bienestar y futuro.", "reflexion": "Aun si no ves el camino, Dios sí ve un buen final para vos."}, {"ref": "Salmo 55:22", "extracto": "Echa sobre el Señor tu carga y Él te sustentará.", "reflexion": "Soltá el peso; Dios puede con lo que te excede."}, {"ref": "1 Pedro 5:7", "extracto": "Echando toda ansiedad sobre Él, porque tiene cuidado.", "reflexion": "Dios cuida de vos con atención y ternura, incluso en lo mínimo."}], "ansiedad": [{"ref": "Filipenses 4:6-7", "extracto": "No se inquieten por nada; presenten sus peticiones a Dios.", "reflexion": "Respirá, orá y entregá; su paz supera todo cálculo."}, {"ref": "Mateo 6:34", "extracto": "No se angustien por el mañana.", "reflexion": "Ocupate del hoy; Dios ya está en tu mañana."}, {"ref": "Proverbios 3:5-6", "extracto": "Confía en el Señor de todo corazón.", "reflexion": "Rendí el control: Dios endereza tus pasos cuando lo buscás."}, {"ref": "Salmo 56:3", "extracto": "Cuando temo, en ti confío.", "reflexion": "Decí con calma: confío en vos, Señor, ahora mismo."}, {"ref": "Mateo 11:28-30", "extracto": "Vengan a mí los cargados y yo los haré descansar.", "reflexion": "Descansá en Jesús; su yugo es suave y alivia tu pecho."}, {"ref": "Salmo 94:19", "extracto": "En la multitud de mis pensamientos, me consuela tu consuelo.", "reflexion": "Cuando la mente corre, su consuelo te alcanza."}, {"ref": "Juan 14:1", "extracto": "No se turbe su corazón; crean en Dios.", "reflexion": "Elegí creer: tu corazón puede calmarse en su presencia."}, {"ref": "Isaías 26:3", "extracto": "Tú guardarás en completa paz al que en ti persevera.", "reflexion": "Fijá tu mente en Él; la paz crece sostenida."}, {"ref": "Salmo 46:1", "extracto": "Dios es nuestro amparo y fortaleza, pronto auxilio.", "reflexion": "Pedí ayuda; Dios responde con fuerza y amparo real."}, {"ref": "Colosenses 3:15", "extracto": "Que la paz de Cristo gobierne sus corazones.", "reflexion": "Dejá que su paz sea la que decida hoy."}, {"ref": "Salmo 121:1-2", "extracto": "Mi socorro viene del Señor.", "reflexion": "Mirá hacia arriba: tu ayuda viene de más alto que tu miedo."}, {"ref": "2 Timoteo 1:7", "extracto": "Dios nos dio espíritu de poder, amor y dominio propio.", "reflexion": "No sos tu ansiedad; en Cristo tenés autocontrol y amor."}, {"ref": "Salmo 37:5", "extracto": "Encomienda al Señor tu camino, y Él hará.", "reflexion": "Entregá el plan; Dios sabe abrir las puertas correctas."}, {"ref": "Romanos 15:13", "extracto": "El Dios de esperanza los llene de gozo y paz.", "reflexion": "Que la esperanza te llene otra vez, incluso hoy."}, {"ref": "1 Pedro 5:7", "extracto": "Echen sobre Él toda ansiedad.", "reflexion": "Dios quiere cargar lo que te pesa; dejalo en sus manos."}], "desanimo": [{"ref": "Gálatas 6:9", "extracto": "No nos cansemos de hacer el bien.", "reflexion": "Seguí sembrando; la cosecha llega en su tiempo."}, {"ref": "Isaías 40:31", "extracto": "Los que esperan en el Señor renovarán fuerzas.", "reflexion": "Respirá: nuevas fuerzas vienen desde lo alto."}, {"ref": "Josué 1:9", "extracto": "Esfuérzate y sé valiente; yo estoy contigo.", "reflexion": "No estás solo en la batalla; Dios va delante."}, {"ref": "2 Corintios 12:9", "extracto": "Mi gracia te basta; mi poder se perfecciona.", "reflexion": "Tu debilidad no te descalifica; abre espacio a su poder."}, {"ref": "Hebreos 12:1-2", "extracto": "Corramos con paciencia, puestos los ojos en Jesús.", "reflexion": "Mirar a Jesús te recentra y te sostiene en la carrera."}, {"ref": "Salmo 73:26", "extracto": "Mi carne y mi corazón desfallecen; Dios es mi fortaleza.", "reflexion": "Cuando todo falla, Dios permanece como roca."}, {"ref": "Habacuc 3:17-19", "extracto": "Aun sin frutos… me alegraré en el Señor.", "reflexion": "Tu gozo no depende del resultado; depende de Él."}, {"ref": "Salmo 27:14", "extracto": "Espera en el Señor; esfuérzate; Él fortalecerá tu corazón.", "reflexion": "Esperar en Dios no es pasivo; es valentía sostenida."}, {"ref": "1 Corintios 15:58", "extracto": "Sean firmes; su trabajo en el Señor no es en vano.", "reflexion": "Nada de lo hecho con amor se pierde ante Dios."}, {"ref": "Salmo 62:5", "extracto": "En Dios espera en silencio mi alma.", "reflexion": "Hacé pausa; el silencio también es oración."}, {"ref": "Proverbios 24:16", "extracto": "Siete veces cae el justo, y se levanta.", "reflexion": "Caer no es el final; levantarte es tu testimonio."}, {"ref": "2 Tesalonicenses 3:13", "extracto": "No se cansen de hacer el bien.", "reflexion": "Tu constancia importa; alguien necesita tu luz."}, {"ref": "Nehemías 8:10", "extracto": "El gozo del Señor es mi fuerza.", "reflexion": "Dejá que el gozo de Dios te recargue por dentro."}, {"ref": "Romanos 8:28", "extracto": "Todo coopera para bien a los que aman a Dios.", "reflexion": "Dios teje bien incluso con hilos difíciles."}, {"ref": "Filipenses 1:6", "extracto": "El que comenzó la buena obra la perfeccionará.", "reflexion": "Dios no abandona procesos; también te terminará a vos."}], "gratitud": [{"ref": "Salmo 107:1", "extracto": "Den gracias al Señor, porque es bueno.", "reflexion": "Agradecé hoy por lo pequeño: abre puertas a más gozo."}, {"ref": "1 Tesalonicenses 5:16-18", "extracto": "Estén siempre gozosos; den gracias en todo.", "reflexion": "La gratitud es práctica diaria; sumá tres motivos ahora."}, {"ref": "Colosenses 3:17", "extracto": "Todo en el nombre de Jesús, dando gracias.", "reflexion": "Tu día común es lugar sagrado para agradecer."}, {"ref": "Salmo 103:1-5", "extracto": "Bendice, alma mía… no olvides sus beneficios.", "reflexion": "Hacé memoria: Dios ya te sostuvo antes y lo hará otra vez."}, {"ref": "Salmo 136:1", "extracto": "Porque para siempre es su misericordia.", "reflexion": "Aun si cambia todo, su amor firme no cambia."}, {"ref": "Filipenses 4:4", "extracto": "Alégrense en el Señor siempre.", "reflexion": "Elegí celebrar pequeñas victorias de hoy."}, {"ref": "Salmo 118:24", "extracto": "Este es el día que hizo el Señor.", "reflexion": "Viví este día como regalo; es único e irrepetible."}, {"ref": "Santiago 1:17", "extracto": "Toda buena dádiva viene de lo alto.", "reflexion": "Reconocé lo recibido; te vuelve más libre y generoso."}, {"ref": "Efesios 5:20", "extracto": "Dando gracias por todo, en el nombre de Jesús.", "reflexion": "La gratitud reordena la mente y ensancha el corazón."}, {"ref": "Salmo 9:1", "extracto": "Te alabaré con todo mi corazón.", "reflexion": "Soltá la vergüenza; agradecé en voz alta hoy."}, {"ref": "Colosenses 4:2", "extracto": "Perseveren en la oración, con gratitud.", "reflexion": "Anotá respuestas; tu diario de gratitud crecerá."}, {"ref": "Lucas 17:15-19", "extracto": "Uno volvió glorificando a Dios y fue sanado.", "reflexion": "Volver a agradecer completa la sanidad del alma."}, {"ref": "Salmo 95:1-3", "extracto": "Venid, cantemos con júbilo… Él es grande.", "reflexion": "Cantá aunque sea bajito; tu alma se eleva."}, {"ref": "Hebreos 12:28", "extracto": "Recibimos un reino inconmovible; seamos agradecidos.", "reflexion": "Agradecé por lo eterno: nada lo sacude."}, {"ref": "2 Corintios 9:8", "extracto": "Dios puede hacer que abunde toda gracia.", "reflexion": "Agradecé y compartí; siempre habrá suficiente."}]};
+let estado = { actualEmo: null, actualIdx: null, nombre: "Bauti" };
+const SHARE = {"top": "#e9fff5", "bottom": "#eaf5ff", "frame": "#fdf7ce"};
+
+function rndMax(n, excludeIdx){ if(n<=1) return 0; let i=Math.floor(Math.random()*n); if(excludeIdx!=null&&n>1&&i===excludeIdx) i=(i+1)%n; return i; }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',1500); }
+
+const refEl=document.getElementById('ref'), extractEl=document.getElementById('extract'), reflexEl=document.getElementById('reflection');
+function renderCard(emo, idx){ const item=DATA[emo][idx]; refEl.textContent=item.ref+" · "+emo.toUpperCase(); extractEl.textContent="“"+item.extracto+"”"; reflexEl.textContent=item.reflexion; estado.actualEmo=emo; estado.actualIdx=idx; }
+
+document.querySelectorAll('.emo').forEach(btn=>btn.addEventListener('click',()=>{ document.querySelectorAll('.emo').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); const emo=btn.dataset.emo; renderCard(emo, rndMax(DATA[emo].length, null)); }));
+document.getElementById('btnOtro').addEventListener('click',()=>{ const emo=estado.actualEmo||'tristeza'; renderCard(emo, rndMax(DATA[emo].length, estado.actualIdx)); });
+document.getElementById('btnFav').addEventListener('click',()=>{ if(!estado.actualEmo) return showToast("Elegí una emoción primero"); const favs=JSON.parse(localStorage.getItem('frasquito_favs')||'[]'); const item={emo:estado.actualEmo, idx:estado.actualIdx, ts:Date.now()}; if(!favs.some(f=>f.emo===item.emo&&f.idx===item.idx)){favs.push(item);localStorage.setItem('frasquito_favs',JSON.stringify(favs));showToast("Agregado a favoritos");} else showToast("Ya está en favoritos"); });
+
+// Modal favoritos
+const modalBg=document.getElementById('modalBg'), favList=document.getElementById('favList');
+function openFavs(){ favList.innerHTML=''; const favs=JSON.parse(localStorage.getItem('frasquito_favs')||'[]'); if(!favs.length) favList.innerHTML='<div class="fav-item">Aún no guardaste favoritos.</div>'; else favs.slice().reverse().forEach(f=>{ const it=DATA[f.emo][f.idx]; const div=document.createElement('div'); div.className='fav-item'; div.innerHTML=`<div class="fav-head"><span class="tag">#${f.emo}</span><button class="x" data-del="${f.ts}">Borrar</button></div><div class="ref">${it.ref}</div><div class="extract">“${it.extracto}”</div><div class="reflection">${it.reflexion}</div>`; favList.appendChild(div); }); modalBg.style.display='flex'; favList.querySelectorAll('button[data-del]').forEach(b=>b.addEventListener('click',()=>{ const ts=parseInt(b.getAttribute('data-del')); const favs2=(JSON.parse(localStorage.getItem('frasquito_favs')||'[]')).filter(x=>x.ts!==ts); localStorage.setItem('frasquito_favs', JSON.stringify(favs2)); openFavs(); })); }
+document.getElementById('btnVerFav').addEventListener('click', openFavs);
+document.getElementById('btnClose').addEventListener('click', ()=> modalBg.style.display='none');
+document.getElementById('btnClearAll').addEventListener('click', ()=>{ localStorage.removeItem('frasquito_favs'); openFavs(); });
+
+// --- SHARE CARD v4: auto-fit text + jar ---
+function wrap(ctx, text, maxWidth, font){
+  ctx.save(); ctx.font=font; const words=text.split(' '); let lines=[], line='';
+  for(let i=0;i<words.length;i++){ const test=line+words[i]+' '; if(ctx.measureText(test).width>maxWidth && i>0){ lines.push(line.trim()); line=words[i]+' '; } else { line=test; } }
+  lines.push(line.trim()); ctx.restore(); return lines;
+}
+function blockHeight(lines, lineHeight){ return lines.length*lineHeight; }
+
+async function shareCard(){
+  if(!estado.actualEmo) return showToast("Elegí una emoción primero");
+  const it=DATA[estado.actualEmo][estado.actualIdx];
+  const W=1080,H=1350,M=60;
+  const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H; const ctx=canvas.getContext('2d');
+
+  // fondo + marco
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, SHARE.top); grad.addColorStop(1, SHARE.bottom);
+  ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=SHARE.frame; ctx.lineWidth=10; ctx.strokeRect(M-10,M-10,W-2*(M-10),H-2*(M-10));
+
+  // tamaños iniciales
+  let sTitle=52, sRef=40, sExtract=44, sRefl=28;
+  const minExtract=32, minRefl=22;
+  let jarH=300; const jarMin=220, jarMax=380;
+  const maxW=W-2*M, spacing=24;
+  const title=`Frasquito de Fe · Bauti`;
+  const refText=it.ref+" · "+estado.actualEmo.toUpperCase();
+
+  function metrics(){
+    const fTitle=`bold ${sTitle}px system-ui,-apple-system,Segoe UI,Roboto,Arial`;
+    const fRef=`bold ${sRef}px system-ui,-apple-system,Segoe UI,Roboto,Arial`;
+    const fExt=`italic ${sExtract}px Georgia, serif`;
+    const fRefl=`${sRefl}px system-ui,-apple-system,Segoe UI,Roboto,Arial`;
+    const lines1=wrap(ctx, "“"+it.extracto+"”", maxW, fExt);
+    const lines2=wrap(ctx, it.reflexion, maxW, fRefl);
+    const hTitle=60, hRef=46;
+    const hExt=blockHeight(lines1, Math.round(sExtract*1.15));
+    const hRefl=blockHeight(lines2, Math.round(sRefl*1.35));
+    const total=hTitle+spacing+jarH+spacing+hRef+spacing/2+hExt+spacing/2+hRefl+spacing+34;
+    return {lines1, lines2, fTitle, fRef, fExt, fRefl, hTitle, hRef, hExt, hRefl, total};
+  }
+
+  let m=metrics(); let guard=0;
+  while(m.total > H-2*M && guard<120){
+    if(sExtract>minExtract) sExtract-=1;
+    if(guard%2===0 && sRefl>minRefl) sRefl-=1;
+    if(guard%3===0 && jarH>jarMin) jarH-=8;
+    m=metrics(); guard++;
+  }
+  while(m.total < H-2*M-120 && jarH<jarMax && guard<200){
+    jarH+=8; m=metrics(); guard++;
+  }
+
+  let y = M + Math.max(0, (H-2*M - m.total)/2);
+
+  ctx.fillStyle='#2b3140'; ctx.textAlign='center'; ctx.font=m.fTitle; ctx.fillText(title, W/2, y+50);
+  y += m.hTitle + spacing;
+
+  // jar
+  const jarW=Math.round(jarH*1.0), jarX=W/2-jarW/2, jarY=y;
+  ctx.fillStyle='#ffffff'; ctx.strokeStyle='#b7c0d0'; ctx.lineWidth=6;
+  if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(jarX, jarY, jarW, jarH, 28); ctx.fill(); ctx.stroke(); ctx.fillStyle='#f2f4fb'; ctx.beginPath(); ctx.roundRect(jarX+20, jarY-20, jarW-40, 40, 10); ctx.fill(); ctx.stroke(); }
+  else { ctx.fillRect(jarX,jarY,jarW,jarH); ctx.fillRect(jarX+20,jarY-20,jarW-40,40); ctx.strokeRect(jarX,jarY,jarW,jarH); ctx.strokeRect(jarX+20,jarY-20,jarW-40,40); }
+
+  ctx.fillStyle='#2b3140'; ctx.beginPath(); ctx.arc(W/2-jarW*0.23, jarY+jarH*0.43, 12, 0, 6.283); ctx.fill();
+  ctx.beginPath(); ctx.arc(W/2+jarW*0.23, jarY+jarH*0.43, 12, 0, 6.283); ctx.fill();
+  ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(W/2-jarW*0.18, jarY+jarH*0.52); ctx.quadraticCurveTo(W/2, jarY+jarH*0.58, W/2+jarW*0.18, jarY+jarH*0.52); ctx.stroke();
+  ctx.fillStyle='#ffb0bf'; ctx.beginPath(); ctx.arc(W/2-jarW*0.27, jarY+jarH*0.50, 8, 0, 6.283); ctx.fill(); ctx.beginPath(); ctx.arc(W/2+jarW*0.27, jarY+jarH*0.50, 8, 0, 6.283); ctx.fill();
+
+  y += jarH + spacing;
+
+  ctx.fillStyle='#2b3140'; ctx.textAlign='left'; ctx.font=m.fRef; ctx.fillText(refText, M, y);
+  y += m.hRef + spacing/2;
+
+  ctx.font=m.fExt; m.lines1.forEach(ln=>{ ctx.fillText(ln, M, y); y += Math.round((sExtract*1.15)); });
+  y += spacing/2;
+  ctx.font=m.fRefl; m.lines2.forEach(ln=>{ ctx.fillText(ln, M, y); y += Math.round((sRefl*1.35)); });
+
+  y += spacing;
+  ctx.font='bold 30px system-ui,-apple-system,Segoe UI,Roboto,Arial'; ctx.fillText('#FrasquitoDeFe', M, y);
+
+  const blob = await new Promise(res=>canvas.toBlob(res, 'image/png'));
+  const dataUrl = canvas.toDataURL('image/png');
+
+  try {
+    const file = new File([blob], 'frasquito.png', {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})) {
+      await navigator.share({ title:'Frasquito de Fe', files:[file] });
+      return;
+    }
+  } catch(e){}
+
+  if(navigator.share) { try { await navigator.share({ title:'Frasquito de Fe', url: dataUrl }); return; } catch(e){} }
+  const shareBg=document.getElementById('shareBg'); const img=document.getElementById('shareImg');
+  const down=document.getElementById('btnDownload'); const open=document.getElementById('btnOpenTab');
+  img.src=dataUrl; down.href=dataUrl; open.onclick=()=>window.open(dataUrl,'_blank'); shareBg.style.display='flex';
+}
+document.getElementById('btnShare').addEventListener('click', shareCard);
+document.getElementById('btnShareClose').addEventListener('click',()=>document.getElementById('shareBg').style.display='none');
+
+if('serviceWorker' in navigator){ window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js')); }
+</script>
+</body></html>
