@@ -1,4 +1,4 @@
-// guard.js v8.1 — nombre + tema (Bauti/Martina), long-press, sin cinta ni “Versión …”
+// guard.js v8.2 — nombre + tema (Bauti/Martina), long-press, sin cinta, sin "Versión …", cierra overlay y recarga suave
 (function () {
   const THEMES = {
     bauti:   { bg1:"#f3fff5", bg2:"#f3fbff", brand:"#ffb8ae", chip:"#ffe9e5", text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55" },
@@ -9,20 +9,25 @@
     martina: "Léeme cuando te sientas ansiosa, triste, desanimada o agradecida ✨",
   };
 
-  // --- Params (decodifica acentos/espacios) ---
+  // --- Params (decode acentos/espacios) ---
   const qs = new URLSearchParams(location.search);
-  const getDecoded = (k) => decodeURIComponent((qs.get(k) || "").replace(/\+/g," ")).trim();
-  let nombre   = getDecoded("u") || (localStorage.getItem("buyer_name") || "").trim();
+  const dec = k => decodeURIComponent((qs.get(k) || "").replace(/\+/g," ")).trim();
+  let nombre   = dec("u") || (localStorage.getItem("buyer_name") || "").trim();
   let themeKey = (qs.get("t") || localStorage.getItem("ff_theme_key") || "bauti").toLowerCase();
   if (!THEMES[themeKey]) themeKey = "bauti";
 
   const setParam = (url, key, value) => { try { const u=new URL(url); u.searchParams.set(key,value); return u.toString(); } catch { return url; } };
 
-  // --- Safety: limpia overlays viejos y muestra la app ---
+  // --- Safety: limpiar overlays viejos y mostrar la app sí o sí ---
   function unblock() {
-    const old = document.getElementById("guard-blocker"); if (old) old.remove();
-    const main = document.querySelector("main"); if (main) main.style.removeProperty("display");
+    ["guard-blocker","cfg-overlay","name-overlay-lite","guard-ribbon","guard-ribbon-lite"].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.remove();
+    });
+    document.documentElement.style.removeProperty("overflow");
+    document.body.style.removeProperty("overflow");
     document.body.style.removeProperty("display");
+    const main = document.querySelector("main");
+    if (main) main.style.removeProperty("display");
   }
 
   function applyTheme(key) {
@@ -51,16 +56,13 @@
     const tagline = TAGLINE[key] || TAGLINE.bauti;
     localStorage.setItem("buyer_name", n);
 
-    // Reemplaza si ya existe un “Hola …”
     for (const el of document.querySelectorAll("h1,h2,h3,p,div,span,strong")) {
       const txt = (el.textContent || "").trim();
       if (/^hola\s+/i.test(txt)) { el.innerHTML = `<b>Hola ${n}!</b> ${tagline}`; return el; }
     }
-    // Spans de nombre sueltos
     ["[data-username]","#username","#usuario","#usuarioSpan",".usuario",".hola-nombre"]
       .forEach(sel => { const el=document.querySelector(sel); if(el) el.textContent=n; });
 
-    // Si no hay, se crea bloque
     const host = document.querySelector("main") || document.body;
     const bar = document.createElement("div");
     bar.className = "intro-block";
@@ -79,7 +81,7 @@
           #cfg-overlay{position:fixed;inset:0;background:rgba(10,11,20,.96);color:#eaf1ff;display:flex;align-items:center;justify-content:center;z-index:2147483647;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif}
           #cfg-overlay .card{background:linear-gradient(180deg,#151735,#10122e);border:1px solid #2d315b;border-radius:16px;padding:18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-width:92vw;text-align:center}
           #cfg-overlay input, #cfg-overlay label{color:#eaf1ff}
-          #cfg-overlay input, #cfg-overlay select{padding:10px;border-radius:8px;border:1px solid #2d315b;background:#0e1330;color:#eaf1ff;width:240px}
+          #cfg-overlay input{padding:10px;border-radius:8px;border:1px solid #2d315b;background:#0e1330;color:#eaf1ff;width:240px}
           #cfg-overlay button{margin-left:6px;padding:10px 14px;border-radius:8px;background:#5ad1e6;color:#0a0f18;border:0;font-weight:700;cursor:pointer}
           #cfg-overlay .row{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:10px;flex-wrap:wrap}
           #cfg-overlay .sw{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#0e1330;border:1px solid #2d315b}
@@ -119,10 +121,11 @@
         const curTheme = localStorage.getItem("ff_theme_key") || themeKey;
         const { n, t } = await abrirEditor(curName, curTheme);
         nombre = n; themeKey = t;
-        applyTheme(t); quitarLineaVersion();
-        const intro = pintarIntro(n, t);
-        try { history.replaceState(null,"", setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",t)); } catch {}
-        bindLongPress([intro, document.querySelector("img")]); // rebind
+        // actualizar y recargar suave
+        const newUrl = setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",t);
+        try { history.replaceState(null, "", newUrl); } catch {}
+        unblock(); applyTheme(t); quitarLineaVersion(); pintarIntro(n, t);
+        setTimeout(()=>location.replace(newUrl), 50);
       },650); };
       const end = ()=>{ clearTimeout(timer); timer=null; };
       ["pointerdown","touchstart","mousedown"].forEach(e=>el.addEventListener(e,start));
@@ -132,7 +135,7 @@
   }
 
   function run(n, tKey) {
-    unblock();                          // <<— clave
+    unblock();
     applyTheme(tKey);
     quitarLineaVersion();
     const intro = pintarIntro(n, tKey);
@@ -141,7 +144,7 @@
   }
 
   const start = async () => {
-    unblock();                          // <<— por si el DOM llega con overlay
+    unblock();
     if (!nombre) {
       const { n, t } = await abrirEditor("", themeKey);
       nombre = n; themeKey = t;
