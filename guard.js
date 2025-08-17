@@ -1,5 +1,8 @@
-// guard.js v8.2 — nombre + tema (Bauti/Martina), long-press, sin cinta, sin "Versión …", cierra overlay y recarga suave
+// guard.js v8.3 — nombre + tema (Bauti/Martina), sin recarga, sin cinta, sin "Versión …"
 (function () {
+  if (window.__FF_GUARD_ACTIVE__) return; // evita doble inyección
+  window.__FF_GUARD_ACTIVE__ = true;
+
   const THEMES = {
     bauti:   { bg1:"#f3fff5", bg2:"#f3fbff", brand:"#ffb8ae", chip:"#ffe9e5", text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55" },
     martina: { bg1:"#ffece0", bg2:"#fdeff8", brand:"#f6c7ff", chip:"#f7eaff", text:"#1e2330", card:"#ffffff14", border:"#e6e7ee55" }
@@ -9,16 +12,11 @@
     martina: "Léeme cuando te sientas ansiosa, triste, desanimada o agradecida ✨",
   };
 
-  // --- Params (decode acentos/espacios) ---
+  // -------- utilidades --------
   const qs = new URLSearchParams(location.search);
   const dec = k => decodeURIComponent((qs.get(k) || "").replace(/\+/g," ")).trim();
-  let nombre   = dec("u") || (localStorage.getItem("buyer_name") || "").trim();
-  let themeKey = (qs.get("t") || localStorage.getItem("ff_theme_key") || "bauti").toLowerCase();
-  if (!THEMES[themeKey]) themeKey = "bauti";
-
   const setParam = (url, key, value) => { try { const u=new URL(url); u.searchParams.set(key,value); return u.toString(); } catch { return url; } };
 
-  // --- Safety: limpiar overlays viejos y mostrar la app sí o sí ---
   function unblock() {
     ["guard-blocker","cfg-overlay","name-overlay-lite","guard-ribbon","guard-ribbon-lite"].forEach(id=>{
       const el=document.getElementById(id); if(el) el.remove();
@@ -26,8 +24,7 @@
     document.documentElement.style.removeProperty("overflow");
     document.body.style.removeProperty("overflow");
     document.body.style.removeProperty("display");
-    const main = document.querySelector("main");
-    if (main) main.style.removeProperty("display");
+    const main = document.querySelector("main"); if (main) main.style.removeProperty("display");
   }
 
   function applyTheme(key) {
@@ -36,8 +33,7 @@
     let tag = document.getElementById("dynamic-theme");
     if (!tag) { tag = document.createElement("style"); tag.id = "dynamic-theme"; document.documentElement.appendChild(tag); }
     tag.textContent = `
-      :root{ --bg1:${p.bg1}; --bg2:${p.bg2}; --brand:${p.brand}; --chip:${p.chip};
-             --text:${p.text}; --card:${p.card}; --border:${p.border}; }
+      :root{ --bg1:${p.bg1}; --bg2:${p.bg2}; --brand:${p.brand}; --chip:${p.chip}; --text:${p.text}; --card:${p.card}; --border:${p.border}; }
       body{ background:linear-gradient(180deg,var(--bg1),var(--bg2)) !important; color:var(--text); }
       .card, .intro-block{ background:var(--card)!important; border:1px solid var(--border)!important; border-radius:18px; }
       .chip, .pill, button, .btn{ background:var(--chip)!important; border:1px solid var(--brand)!important; }
@@ -56,13 +52,16 @@
     const tagline = TAGLINE[key] || TAGLINE.bauti;
     localStorage.setItem("buyer_name", n);
 
+    // Reemplazo si existe “Hola …”
     for (const el of document.querySelectorAll("h1,h2,h3,p,div,span,strong")) {
       const txt = (el.textContent || "").trim();
       if (/^hola\s+/i.test(txt)) { el.innerHTML = `<b>Hola ${n}!</b> ${tagline}`; return el; }
     }
-    ["[data-username]","#username","#usuario","#usuarioSpan",".usuario",".hola-nombre"]
-      .forEach(sel => { const el=document.querySelector(sel); if(el) el.textContent=n; });
-
+    // Spans de nombre sueltos
+    ["[data-username]","#username","#usuario","#usuarioSpan",".usuario",".hola-nombre"].forEach(sel=>{
+      const el=document.querySelector(sel); if(el) el.textContent=n;
+    });
+    // Si no hay, creo bloque
     const host = document.querySelector("main") || document.body;
     const bar = document.createElement("div");
     bar.className = "intro-block";
@@ -117,19 +116,19 @@
       el.__lpBound = true;
       let timer=null;
       const start=()=>{ timer=setTimeout(async ()=>{
-        const curName = localStorage.getItem("buyer_name") || nombre || "";
-        const curTheme = localStorage.getItem("ff_theme_key") || themeKey;
+        const curName = localStorage.getItem("buyer_name") || "";
+        const curTheme = localStorage.getItem("ff_theme_key") || "bauti";
         const { n, t } = await abrirEditor(curName, curTheme);
-        nombre = n; themeKey = t;
-        // actualizar y recargar suave
+        // actualizar en vivo, sin recargar
         const newUrl = setParam(setParam(location.href,"u",encodeURIComponent(n)),"t",t);
-        try { history.replaceState(null, "", newUrl); } catch {}
-        unblock(); applyTheme(t); quitarLineaVersion(); pintarIntro(n, t);
-        setTimeout(()=>location.replace(newUrl), 50);
+        try { history.replaceState(null,"", newUrl); } catch {}
+        unblock(); applyTheme(t); quitarLineaVersion(); const intro=pintarIntro(n,t);
+        // rebind por si el nodo cambió
+        bindLongPress([intro, document.querySelector("img")]);
       },650); };
-      const end = ()=>{ clearTimeout(timer); timer=null; };
-      ["pointerdown","touchstart","mousedown"].forEach(e=>el.addEventListener(e,start));
-      ["pointerup","pointercancel","touchend","mouseleave","mouseup"].forEach(e=>el.addEventListener(e,end));
+      const end=()=>{ clearTimeout(timer); timer=null; };
+      ["pointerdown","touchstart","mousedown"].forEach(e=>el.addEventListener(e,start,{passive:true}));
+      ["pointerup","pointercancel","touchend","mouseleave","mouseup"].forEach(e=>el.addEventListener(e,end,{passive:true}));
     };
     targets.forEach(bind);
   }
@@ -145,6 +144,10 @@
 
   const start = async () => {
     unblock();
+    let nombre = dec("u") || (localStorage.getItem("buyer_name") || "").trim();
+    let themeKey = (qs.get("t") || localStorage.getItem("ff_theme_key") || "bauti").toLowerCase();
+    if (!THEMES[themeKey]) themeKey = "bauti";
+
     if (!nombre) {
       const { n, t } = await abrirEditor("", themeKey);
       nombre = n; themeKey = t;
@@ -152,6 +155,6 @@
     run(nombre, themeKey);
   };
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once:true });
   else start();
 })();
