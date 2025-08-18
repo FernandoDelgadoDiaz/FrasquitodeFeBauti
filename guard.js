@@ -1,9 +1,18 @@
-// guard.js v10 — Solo nombre (sin temas) + quita "Versión …"
+// guard.js v11 — Solo NOMBRE, sin temas. No rompe layout.
 (function () {
+  // -------- utilidades --------
+  const norm = s => (s || "")
+    .normalize("NFD").replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, " ").trim();
+
+  const escapeHTML = s => s.replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // lee nombre de URL o localStorage
   const qs = new URLSearchParams(location.search);
   let nombre = decodeURIComponent(qs.get("u") || localStorage.getItem("buyer_name") || "").trim();
 
-  // Quita cualquier línea que empiece con "Versión ..."
+  // quita “Versión …”
   function quitarVersion() {
     document.querySelectorAll("small, em, i, p, div, span").forEach(el => {
       const t = (el.textContent || "").trim();
@@ -11,34 +20,42 @@
     });
   }
 
-  // Encuentra el párrafo que contiene la frase "Léeme cuando te sientas ..."
-  function nodoSaludo() {
-    const nodes = document.querySelectorAll("h1,h2,h3,p,div,span,strong");
-    for (const el of nodes) {
-      const txt = (el.textContent || "")
-        .normalize("NFD").replace(/\p{Diacritic}/gu, "");
-      if (/leeme cuando te sientas/i.test(txt)) return el;
+  // localiza SOLO el renglón del saludo
+  function encontrarSaludo() {
+    const candidatos = document.querySelectorAll("p,div,span,h2,h3");
+    for (const el of candidatos) {
+      const txt = norm(el.innerText);
+      // Debe contener "leeme cuando te sientas", ser corto y NO contener controles
+      if (/leeme cuando te sientas/i.test(txt) &&
+          txt.length > 20 && txt.length < 220 &&
+          !el.querySelector("button,nav,main,header,footer,section")) {
+        return el;
+      }
     }
     return null;
   }
 
-  // Pinta "Hola N!" y deja la frase original igual
-  function render() {
-    const n = nombre || "Amigo";
-    const el = nodoSaludo();
-    if (el) {
-      const tail = (el.textContent || "").replace(/^hola.*?\!\s*/i, ""); // conserva tu frase original
-      el.innerHTML = `<b>Hola ${n}!</b> ${tail || "Léeme cuando te sientas ansioso, triste, desanimado o agradecido ✨"}`;
-    }
+  // obtiene el final del texto (“Léeme cuando…”) preservando tu redacción
+  function obtenerCola(el) {
+    const raw = el.innerText || "";
+    const sinHola = raw.replace(/^ *hola .*?(!|¡)\s*/i, "");
+    return sinHola || "Léeme cuando te sientas ansioso, triste, desanimado o agradecido ✨";
+  }
+
+  function pintarNombre(el) {
+    const n = escapeHTML(nombre || "Amigo");
+    const cola = obtenerCola(el);
+    el.innerHTML = `<b>Hola ${n}!</b> ${cola}`;
+    // también llena spans opcionales
     document.querySelectorAll('[data-username], #username, #usuario, #usuarioSpan, .usuario')
-      .forEach(e => e.textContent = n);
+      .forEach(e => e.textContent = nombre || "Amigo");
   }
 
   function persistir() {
-    localStorage.setItem("buyer_name", nombre);
+    localStorage.setItem("buyer_name", nombre || "Amigo");
     try {
       const u = new URL(location.href);
-      u.searchParams.set("u", encodeURIComponent(nombre));
+      u.searchParams.set("u", encodeURIComponent(nombre || "Amigo"));
       history.replaceState(null, "", u);
     } catch {}
   }
@@ -47,30 +64,40 @@
     const nuevo = prompt("¿Cómo te llamás?", nombre || "");
     if (nuevo === null) return;
     nombre = (nuevo.trim() || "Amigo");
-    render();
+    const saludo = encontrarSaludo();
+    if (saludo) pintarNombre(saludo);
     persistir();
   }
 
-  function bindEditar() {
-    const trg = nodoSaludo() || document.querySelector("h1") || document.body;
-    // Tap para editar
-    trg.addEventListener("click", pedirNombre);
-    // Long-press alternativo
+  function bindEditar(saludo) {
+    // click para editar
+    saludo.addEventListener("click", pedirNombre);
+    // long-press alternativo
     let t = null;
     const start = () => { t = setTimeout(pedirNombre, 650); };
-    const end = () => { clearTimeout(t); t = null; };
-    ["touchstart","mousedown"].forEach(e => trg.addEventListener(e, start, {passive:true}));
-    ["touchend","touchcancel","mouseup","mouseleave"].forEach(e => trg.addEventListener(e, end));
+    const end   = () => { clearTimeout(t); t = null; };
+    ["touchstart","mousedown"].forEach(e => saludo.addEventListener(e, start, {passive:true}));
+    ["touchend","touchcancel","mouseup","mouseleave"].forEach(e => saludo.addEventListener(e, end));
   }
 
   function init() {
     if (!nombre) nombre = "Amigo";
     quitarVersion();
-    render();
-    persistir();
-    bindEditar();
+
+    const saludo = encontrarSaludo();
+    if (saludo) {
+      pintarNombre(saludo);
+      persistir();
+      bindEditar(saludo);
+    } else {
+      // Si no lo encuentra, no toca nada más (para no romper la UI).
+      persistir();
+    }
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
-  else init();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();
